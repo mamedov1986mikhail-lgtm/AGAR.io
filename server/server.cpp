@@ -1,4 +1,4 @@
-#include "server.hpp"
+#include "server.h"
 
 #include <algorithm>
 #include <cctype>
@@ -7,40 +7,42 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace agar {
+namespace agar 
+{
+    namespace 
+    {
 
-namespace {
-
-void logf(const char* fmt, const std::string& a = "", const std::string& b = "") {
+void logf(const char* fmt, const std::string& a = "", const std::string& b = "") 
+{
     std::printf(fmt, a.c_str(), b.c_str());
     std::printf("\n");
     std::fflush(stdout);
 }
 
-}  // namespace
+}
 
 Server::Server(uv_loop_t* loop, ServerConfig cfg)
     : loop_(loop),
       cfg_(std::move(cfg)),
-      world_(static_cast<std::uint32_t>(
-          std::chrono::steady_clock::now().time_since_epoch().count())),
-      records_(cfg_.recordsFile) {
+      world_(static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())), records_(cfg_.recordsFile) 
+{
     byPlayer_.fill(nullptr);
-    rngState_ = static_cast<std::uint32_t>(
-                    std::chrono::steady_clock::now().time_since_epoch().count()) | 1u;
+    rngState_ = static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count()) | 1u;
 }
 
 Server::~Server() = default;
 
 // ------------------------------------------------------------------ запуск
 
-bool Server::start() {
+bool Server::start() 
+{
     records_.load();
 
     sockaddr_in tcpAddr{};
     sockaddr_in udpAddr{};
     if (uv_ip4_addr(cfg_.host.c_str(), cfg_.tcpPort, &tcpAddr) != 0 ||
-        uv_ip4_addr(cfg_.host.c_str(), cfg_.udpPort, &udpAddr) != 0) {
+        uv_ip4_addr(cfg_.host.c_str(), cfg_.udpPort, &udpAddr) != 0) 
+    {
         std::fprintf(stderr, "Неверный адрес/порт: %s\n", cfg_.host.c_str());
         return false;
     }
@@ -72,16 +74,16 @@ bool Server::start() {
     uv_timer_start(&timer_, &Server::onTick, 0, 1000 / kTickHz);
     started_ = true;
 
-    world_.ensureBots(cfg_.bots);
-    std::printf("AGAR server: TCP %s:%d, UDP %s:%d, ботов: %d\n", cfg_.host.c_str(), cfg_.tcpPort,
-                cfg_.host.c_str(), cfg_.udpPort, cfg_.bots);
+    std::printf("AGAR server: TCP %s:%d, UDP %s:%d\n", cfg_.host.c_str(), cfg_.tcpPort,
+                cfg_.host.c_str(), cfg_.udpPort);
     std::fflush(stdout);
     return true;
 }
 
 void Server::onGenericClosed(uv_handle_t*) {}
 
-void Server::stop() {
+void Server::stop() 
+{
     if (stopping_) return;
     stopping_ = true;
     records_.save();
@@ -98,19 +100,22 @@ void Server::stop() {
 
 // ------------------------------------------------------------------ TCP
 
-void Server::onConnection(uv_stream_t* s, int status) {
+void Server::onConnection(uv_stream_t* s, int status) 
+{
     if (status < 0) return;
     static_cast<Server*>(s->data)->acceptConn();
 }
 
-void Server::acceptConn() {
+void Server::acceptConn() 
+{
     if (stopping_) return;
     Conn* c = new Conn();
     c->server = this;
     uv_tcp_init(loop_, &c->tcp);
     c->tcp.data = c;
     if (uv_accept(reinterpret_cast<uv_stream_t*>(&listener_),
-                  reinterpret_cast<uv_stream_t*>(&c->tcp)) != 0) {
+                  reinterpret_cast<uv_stream_t*>(&c->tcp)) != 0) 
+    {
         uv_close(reinterpret_cast<uv_handle_t*>(&c->tcp), &Server::onConnClosed);
         return;
     }
@@ -119,29 +124,35 @@ void Server::acceptConn() {
     uv_read_start(reinterpret_cast<uv_stream_t*>(&c->tcp), &Server::onAlloc, &Server::onRead);
 }
 
-void Server::onAlloc(uv_handle_t*, size_t suggested, uv_buf_t* buf) {
+void Server::onAlloc(uv_handle_t*, size_t suggested, uv_buf_t* buf) 
+{
     buf->base = static_cast<char*>(std::malloc(suggested));
     buf->len = buf->base ? static_cast<decltype(buf->len)>(suggested) : 0;
 }
 
-void Server::onRead(uv_stream_t* s, ssize_t nread, const uv_buf_t* buf) {
+void Server::onRead(uv_stream_t* s, ssize_t nread, const uv_buf_t* buf) 
+{
     Conn* c = static_cast<Conn*>(s->data);
     Server* self = c->server;
-    if (nread < 0) {
+    if (nread < 0) 
+    {
         std::free(buf->base);
-        self->closeConn(c);  // EOF или ошибка
+        self->closeConn(c);  
         return;
     }
-    if (nread > 0) {
+    if (nread > 0) 
+    {
         c->inbuf.append(buf->base, static_cast<size_t>(nread));
         std::free(buf->base);
-        if (c->inbuf.size() > 4096) {  // защита от мусора без переводов строки
+        if (c->inbuf.size() > 4096) 
+        {  
             self->closeConn(c);
             return;
         }
         std::size_t pos;
-        // handleLine может закрыть соединение, поэтому проверяем его наличие на каждой итерации.
-        while (self->conns_.count(c) && (pos = c->inbuf.find('\n')) != std::string::npos) {
+       
+        while (self->conns_.count(c) && (pos = c->inbuf.find('\n')) != std::string::npos) 
+        {
             std::string line = c->inbuf.substr(0, pos);
             c->inbuf.erase(0, pos + 1);
             if (!line.empty() && line.back() == '\r') line.pop_back();
@@ -152,7 +163,8 @@ void Server::onRead(uv_stream_t* s, ssize_t nread, const uv_buf_t* buf) {
     std::free(buf->base);
 }
 
-void Server::sendLine(Conn* c, const std::string& line) {
+void Server::sendLine(Conn* c, const std::string& line) 
+{
     if (!conns_.count(c)) return;
     WriteReq* w = new WriteReq();
     w->data = line + "\n";
@@ -161,18 +173,21 @@ void Server::sendLine(Conn* c, const std::string& line) {
         delete w;
 }
 
-void Server::onWritten(uv_write_t* req, int) {
-    delete reinterpret_cast<WriteReq*>(req);  // req - первый член WriteReq
+void Server::onWritten(uv_write_t* req, int) 
+{
+    delete reinterpret_cast<WriteReq*>(req); 
 }
 
 void Server::onConnClosed(uv_handle_t* h) { delete static_cast<Conn*>(h->data); }
 
-// Закрытие соединения = выход игрока (если он играл) или уход из очереди.
-void Server::closeConn(Conn* c) {
+void Server::closeConn(Conn* c) 
+{
     if (!conns_.count(c)) return;
-    if (c->state == State::Playing) {
-        leaveGame(c, nullptr);  // без ответа: канал уже закрывается
-    } else if (c->state == State::Queued) {
+    if (c->state == State::Playing) 
+    {
+        leaveGame(c, nullptr);  
+    } else if (c->state == State::Queued) 
+    {
         queue_.erase(std::remove(queue_.begin(), queue_.end(), c), queue_.end());
         c->state = State::Connected;
     }
@@ -182,35 +197,50 @@ void Server::closeConn(Conn* c) {
     promoteQueue();
 }
 
-void Server::handleLine(Conn* c, const std::string& line) {
+void Server::handleLine(Conn* c, const std::string& line) 
+{
     std::vector<std::string> w = splitWords(line);
     if (w.empty()) return;
     const std::string& cmd = w[0];
 
-    if (cmd == "REG") {
+    if (cmd == "REG") 
+    {
         handleReg(c, w);
-    } else if (cmd == "LEAVE") {
-        if (c->state == State::Playing) {
+    } 
+    else if (cmd == "LEAVE") 
+    {
+        if (c->state == State::Playing) 
+        {
             leaveGame(c, "BYE");
-        } else if (c->state == State::Queued) {
+        } 
+        else if (c->state == State::Queued) 
+        {
             queue_.erase(std::remove(queue_.begin(), queue_.end(), c), queue_.end());
             c->state = State::Connected;
             sendLine(c, "BYE 0 0 0 0");
-        } else {
+        } 
+        else 
+        {
             sendLine(c, "BYE 0 0 0 0");
         }
-    } else if (cmd == "RECORDS") {
+    } 
+    else if (cmd == "RECORDS") 
+    {
         sendRecords(c);
-    } else {
+    } 
+    else 
+    {
         sendLine(c, "ERR UNKNOWN Неизвестная команда");
     }
 }
 
-bool Server::nameInUse(const std::string& name) const {
+bool Server::nameInUse(const std::string& name) const 
+{
     if (world_.nameTaken(name)) return true;
-    auto same = [&](const std::string& a) {
+    auto same = [&](const std::string& a) 
+        {
         if (a.size() != name.size()) return false;
-        for (std::size_t i = 0; i < a.size(); ++i)
+        for (std::size_t i = 0; i < a.size(); i++)
             if (std::tolower(static_cast<unsigned char>(a[i])) !=
                 std::tolower(static_cast<unsigned char>(name[i])))
                 return false;
@@ -221,28 +251,33 @@ bool Server::nameInUse(const std::string& name) const {
     return false;
 }
 
-void Server::handleReg(Conn* c, const std::vector<std::string>& w) {
-    if (c->state != State::Connected) {
+void Server::handleReg(Conn* c, const std::vector<std::string>& w) 
+{
+    if (c->state != State::Connected) 
+    {
         sendLine(c, "ERR ALREADY Игрок уже зарегистрирован");
         return;
     }
-    if (w.size() != 3 || !isValidName(w[1])) {
+    if (w.size() != 3 || !isValidName(w[1])) 
+    {
         sendLine(c, "ERR BADNAME Имя: латинские буквы и цифры, до 15 символов");
         return;
     }
     int skin = std::atoi(w[2].c_str());
-    if (skin < 0 || skin >= kSkinCount) {
+    if (skin < 0 || skin >= kSkinCount) 
+    {
         sendLine(c, "ERR BADSKIN Неверный номер цвета/текстуры");
         return;
     }
-    if (nameInUse(w[1])) {
+    if (nameInUse(w[1])) 
+    {
         sendLine(c, "ERR TAKEN Игрок с таким именем уже есть");
         return;
     }
     c->pendingName = w[1];
     c->pendingSkin = static_cast<std::uint8_t>(skin);
 
-    if (world_.humanCount() >= kMaxPlayers) {  // мест нет: ставим в очередь
+    if (world_.humanCount() >= kMaxPlayers) { 
         c->state = State::Queued;
         queue_.push_back(c);
         sendLine(c, std::string("FULL ") + kServerFullMessage);
@@ -252,8 +287,8 @@ void Server::handleReg(Conn* c, const std::vector<std::string>& w) {
     admit(c);
 }
 
-void Server::admit(Conn* c) {
-    if (world_.playerCount() >= kMaxPlayers) world_.removeOneBot();  // боты уступают место людям
+void Server::admit(Conn* c) 
+{
     int id = world_.addPlayer(c->pendingName, c->pendingSkin, false);
     if (id < 0) {  // не должно случаться: имя проверено, место освобождено
         c->state = State::Connected;
@@ -273,21 +308,24 @@ void Server::admit(Conn* c) {
     logf("Вход: %s", c->pendingName);
 }
 
-void Server::promoteQueue() {
-    while (!stopping_ && !queue_.empty() && world_.humanCount() < kMaxPlayers) {
+void Server::promoteQueue() 
+{
+    while (!stopping_ && !queue_.empty() && world_.humanCount() < kMaxPlayers) 
+    {
         Conn* c = queue_.front();
         queue_.pop_front();
         admit(c);
     }
 }
 
-Server::Conn* Server::connByPlayer(int id) const {
+Server::Conn* Server::connByPlayer(int id) const 
+{
     if (id < 0 || id >= kMaxPlayers) return nullptr;
     return byPlayer_[static_cast<std::size_t>(id)];
 }
 
-// Завершение игры игрока: сохраняем рекорд, подтверждаем выход, освобождаем место.
-void Server::finishGame(Conn* c, const char* verb, std::uint32_t weight, int seconds) {
+void Server::finishGame(Conn* c, const char* verb, std::uint32_t weight, int seconds) 
+{
     int place = records_.add(c->pendingName, weight, seconds);
     if (place > 0) records_.save();
     if (c->playerId >= 0) byPlayer_[static_cast<std::size_t>(c->playerId)] = nullptr;
@@ -295,24 +333,26 @@ void Server::finishGame(Conn* c, const char* verb, std::uint32_t weight, int sec
     c->state = State::Connected;
     c->hasUdp = false;
     logf("Выход: %s %s", c->pendingName, place > 0 ? "(рекорд)" : "");
-    if (verb) {
+    if (verb) 
+    {
         sendLine(c, std::string(verb) + " " + std::to_string(weight) + " " +
                         std::to_string(seconds) + " " + (place > 0 ? "1" : "0") + " " +
                         std::to_string(place));
     }
 }
 
-void Server::leaveGame(Conn* c, const char* verb) {
+void Server::leaveGame(Conn* c, const char* verb) 
+{
     const Player* p = world_.player(static_cast<std::uint8_t>(c->playerId));
     std::uint32_t weight = p ? p->weight : 1;
     int seconds = p ? static_cast<int>(p->aliveTime) : 0;
     world_.removePlayer(static_cast<std::uint8_t>(c->playerId));
     finishGame(c, verb, weight, seconds);
-    world_.ensureBots(cfg_.bots);
     promoteQueue();
 }
 
-void Server::sendRecords(Conn* c) {
+void Server::sendRecords(Conn* c) 
+{
     const auto& e = records_.entries();
     std::string out = "RECORDS " + std::to_string(e.size());
     for (const RecordEntry& r : e)
@@ -322,17 +362,19 @@ void Server::sendRecords(Conn* c) {
 
 // ------------------------------------------------------------------ UDP
 
-void Server::onUdpRecv(uv_udp_t* h, ssize_t nread, const uv_buf_t* buf, const sockaddr* addr,
-                       unsigned) {
+void Server::onUdpRecv(uv_udp_t* h, ssize_t nread, const uv_buf_t* buf, const sockaddr* addr, unsigned) 
+{
     Server* self = static_cast<Server*>(h->data);
-    if (nread > 0 && addr) {
+    if (nread > 0 && addr) 
+    {
         self->handleInput(reinterpret_cast<const std::uint8_t*>(buf->base),
                           static_cast<std::size_t>(nread), addr);
     }
     std::free(buf->base);
 }
 
-void Server::handleInput(const std::uint8_t* data, std::size_t n, const sockaddr* addr) {
+void Server::handleInput(const std::uint8_t* data, std::size_t n, const sockaddr* addr) 
+{
     InputPacket in;
     if (!decodeInput(data, n, in)) return;
     Conn* c = connByPlayer(in.id);
@@ -345,8 +387,8 @@ void Server::handleInput(const std::uint8_t* data, std::size_t n, const sockaddr
 
 void Server::onUdpSent(uv_udp_send_t* req, int) { delete reinterpret_cast<UdpSendReq*>(req); }
 
-void Server::sendState(Conn* c, std::uint32_t tickNo, const std::vector<std::uint8_t>& block,
-                       std::uint8_t playersCount) {
+void Server::sendState(Conn* c, std::uint32_t tickNo, const std::vector<std::uint8_t>& block, std::uint8_t playersCount) 
+{
     const Player* me = world_.player(static_cast<std::uint8_t>(c->playerId));
     if (!me || !c->hasUdp) return;
 
@@ -360,7 +402,8 @@ void Server::sendState(Conn* c, std::uint32_t tickNo, const std::vector<std::uin
     w.u8(playersCount);
     w.u16(static_cast<std::uint16_t>(near.size()));
     w.bytes(block);
-    for (const Food& f : near) {
+    for (const Food& f : near) 
+    {
         NetFood nf;
         nf.x = static_cast<std::uint16_t>(f.x);
         nf.y = static_cast<std::uint16_t>(f.y);
@@ -381,7 +424,8 @@ void Server::sendState(Conn* c, std::uint32_t tickNo, const std::vector<std::uin
 
 void Server::onTick(uv_timer_t* t) { static_cast<Server*>(t->data)->tick(); }
 
-void Server::tick() {
+void Server::tick() 
+{
     if (stopping_) return;
     std::uint64_t now = uv_hrtime();
     float dt = static_cast<float>(static_cast<double>(now - lastTickNs_) / 1e9);
@@ -391,19 +435,19 @@ void Server::tick() {
     std::vector<DeathInfo> deaths;
     world_.step(dt, deaths);
 
-    for (const DeathInfo& d : deaths) {
+    for (const DeathInfo& d : deaths) 
+    {
         if (d.bot) continue;
         Conn* c = connByPlayer(d.id);
         if (!c) continue;
         finishGame(c, "DEAD", d.weight, static_cast<int>(d.aliveTime));
     }
-    world_.ensureBots(cfg_.bots);
     if (!deaths.empty()) promoteQueue();
 
-    // Общий блок игроков собираем один раз, дальше он дописывается в пакет каждого клиента.
     ByteWriter block;
     std::uint8_t count = 0;
-    for (const Player& p : world_.players()) {
+    for (const Player& p : world_.players()) 
+    {
         if (!p.active) continue;
         NetPlayer np;
         np.id = p.id;
@@ -413,11 +457,11 @@ void Server::tick() {
         np.weight = p.weight;
         np.name = p.name;
         encodePlayer(block, np);
-        ++count;
+        count++;
     }
-    ++tickNo_;
+    tickNo_++;
     for (Conn* c : conns_)
         if (c->state == State::Playing) sendState(c, tickNo_, block.data(), count);
 }
 
-}  // namespace agar
+} 

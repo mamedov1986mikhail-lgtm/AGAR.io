@@ -1,4 +1,3 @@
-// Сервер игры на libuv: TCP (сессии, очередь, рекорды) + UDP (игровой поток).
 #pragma once
 
 #include <uv.h>
@@ -14,17 +13,19 @@
 #include "protocol.hpp"
 #include "records.hpp"
 
-namespace agar {
+namespace agar 
+{
 
-struct ServerConfig {
+struct ServerConfig 
+{
     std::string host = "0.0.0.0";
     int tcpPort = kDefaultTcpPort;
     int udpPort = kDefaultUdpPort;
-    int bots = 0;                              // сколько ботов держать на свободных местах
     std::string recordsFile = "records.txt";
 };
 
-class Server {
+class Server 
+{
 public:
     Server(uv_loop_t* loop, ServerConfig cfg);
     ~Server();
@@ -33,13 +34,13 @@ public:
     Server& operator=(const Server&) = delete;
 
     bool start();
-    // Закрывает все дескрипторы; после этого uv_run сам завершится.
     void stop();
 
 private:
     enum class State { Connected, Queued, Playing };
 
-    struct Conn {
+    struct Conn 
+    {
         uv_tcp_t tcp;
         Server* server = nullptr;
         std::string inbuf;
@@ -52,11 +53,14 @@ private:
         bool hasUdp = false;
     };
 
-    struct WriteReq {
+    struct WriteReq 
+    {
         uv_write_t req;
         std::string data;
     };
-    struct UdpSendReq {
+
+    struct UdpSendReq 
+    {
         uv_udp_send_t req;
         std::vector<std::uint8_t> data;
     };
@@ -113,4 +117,4 @@ private:
     std::uint32_t rngState_;
 };
 
-}  // namespace agar
+}  
