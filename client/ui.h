@@ -1,21 +1,17 @@
-// Небольшие помощники для вывода текста (UTF-8 -> sf::String).
 #pragma once
-
 #include <SFML/Graphics.hpp>
-
 #include <string>
 
-namespace agar {
-
+namespace agar 
+{
 enum class Align { Left, Center, Right };
 
 inline sf::String U(const std::string& utf8) { return sf::String::fromUtf8(utf8.begin(), utf8.end()); }
 
-// Рисует текст; (x, y) - левый верхний угол, центр или правый верхний угол в зависимости от align.
-// Возвращает ширину текста.
 inline float drawText(sf::RenderTarget& target, const sf::Font& font, const std::string& utf8,
                       float x, float y, unsigned size, sf::Color color,
-                      Align align = Align::Left, bool bold = false) {
+                      Align align = Align::Left, bool bold = false) 
+{
     sf::Text text;
     text.setFont(font);
     text.setString(U(utf8));
@@ -32,7 +28,8 @@ inline float drawText(sf::RenderTarget& target, const sf::Font& font, const std:
     return b.width;
 }
 
-inline sf::Color darker(sf::Color c, float k = 0.6f) {
+inline sf::Color darker(sf::Color c, float k = 0.6f) 
+{
     return sf::Color(static_cast<sf::Uint8>(c.r * k), static_cast<sf::Uint8>(c.g * k),
                      static_cast<sf::Uint8>(c.b * k), c.a);
 }
@@ -40,4 +37,4 @@ inline sf::Color darker(sf::Color c, float k = 0.6f) {
 constexpr unsigned kWinW = 1280;
 constexpr unsigned kWinH = 720;
 
-}  // namespace agar
+}  
