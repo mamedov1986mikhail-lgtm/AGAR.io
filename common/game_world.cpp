@@ -96,7 +96,7 @@ void World::findSpawn(float& x, float& y)
     }
 }
 
-int World::addPlayer(const std::string& name, std::uint8_t skin, bool bot) 
+int World::addPlayer(const std::string& name, std::uint8_t skin) 
 {
     if (nameTaken(name)) return -1;
     for (Player& p : players_) {
@@ -106,7 +106,6 @@ int World::addPlayer(const std::string& name, std::uint8_t skin, bool bot)
         p.id = id;
         p.name = name;
         p.skin = skin;
-        p.bot = bot;
         p.active = true;
         p.weight = 1;
         findSpawn(p.x, p.y);
@@ -136,7 +135,6 @@ void World::step(float dt, std::vector<DeathInfo>& deaths)
     for (Player& p : players_) 
     {
         if (!p.active) continue;
-        if (p.bot) updateBot(p, dt);
         float dx = p.tx - p.x, dy = p.ty - p.y;
         float dist = std::hypot(dx, dy);
         if (dist > 1.f) 

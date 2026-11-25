@@ -37,7 +37,6 @@ struct DeathInfo
     std::string name;
     std::uint32_t weight = 1;
     float aliveTime = 0;
-    bool bot = false;
     std::uint8_t killerId = 0;
 };
 
@@ -46,7 +45,7 @@ class World
 public:
     explicit World(std::uint32_t seed = 12345);
 
-    int addPlayer(const std::string& name, std::uint8_t skin, bool bot);
+    int addPlayer(const std::string& name, std::uint8_t skin);
     bool removePlayer(std::uint8_t id);
     bool nameTaken(const std::string& name) const;  
 

@@ -10,15 +10,13 @@
 using namespace agar;
 
 static int failures = 0;
-#define CHECK(cond)                                                          \
-    do {                                                                     \
-        if (!(cond)) 
-        {                                                       \
-            std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);      \
-            ++failures;                                                      \
-        }                                                                    \
+#define CHECK(cond)                                                   \
+    do {                                                              \
+        if (!(cond)) {                                                \
+            std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+            ++failures;                                               \
+        }                                                             \
     } while (0)
-
 
 static void clearFood(World& w) 
         {
@@ -32,20 +30,20 @@ static void clearFood(World& w)
 static void testStart() 
 {
     World w(1);
-    int id = w.addPlayer("Alice", 3, false);
+    int id = w.addPlayer("Alice", 3);
     CHECK(id >= 0);
     const Player* p = w.player(static_cast<std::uint8_t>(id));
     CHECK(p && p->weight == 1);
     CHECK(std::fabs(p->diameter() - 30.f) < 1e-3f);  
-    CHECK(w.addPlayer("alice", 0, false) < 0);       
+    CHECK(w.addPlayer("alice", 0) < 0);       
 }
 
 static void testPlayerLimit() 
 {
     World w(2);
     for (int i = 0; i < kMaxPlayers; ++i)
-        CHECK(w.addPlayer("P" + std::to_string(i), 0, false) >= 0);
-    CHECK(w.addPlayer("Extra", 0, false) < 0);  
+        CHECK(w.addPlayer("P" + std::to_string(i), 0) >= 0);
+    CHECK(w.addPlayer("Extra", 0) < 0);  
     CHECK(w.playerCount() == kMaxPlayers);
 }
 
@@ -53,7 +51,7 @@ static void testFood()
 {
     World w(3);
     clearFood(w);
-    int id = w.addPlayer("Eater", 0, false);
+    int id = w.addPlayer("Eater", 0);
     Player* p = w.mutablePlayer(static_cast<std::uint8_t>(id));
     p->x = 500;
     p->y = 500;
@@ -74,8 +72,8 @@ static void testEatPlayer()
 {
     World w(4);
     clearFood(w);
-    int a = w.addPlayer("Big", 0, false);
-    int b = w.addPlayer("Small", 1, false);
+    int a = w.addPlayer("Big", 0);
+    int b = w.addPlayer("Small", 1);
     Player* pa = w.mutablePlayer(static_cast<std::uint8_t>(a));
     Player* pb = w.mutablePlayer(static_cast<std::uint8_t>(b));
     pa->weight = 11;
@@ -92,8 +90,8 @@ static void testEatPlayer()
 
     World w2(5);
     clearFood(w2);
-    int c = w2.addPlayer("C", 0, false);
-    int e = w2.addPlayer("E", 0, false);
+    int c = w2.addPlayer("C", 0);
+    int e = w2.addPlayer("E", 0);
     Player* pc = w2.mutablePlayer(static_cast<std::uint8_t>(c));
     Player* pe = w2.mutablePlayer(static_cast<std::uint8_t>(e));
     pc->x = pc->tx = pe->x = pe->tx = 300;
@@ -107,7 +105,7 @@ static void testMovement()
 {
     World w(6);
     clearFood(w);
-    int id = w.addPlayer("Runner", 0, false);
+    int id = w.addPlayer("Runner", 0);
     Player* p = w.mutablePlayer(static_cast<std::uint8_t>(id));
     p->x = p->tx = 100;
     p->y = p->ty = 100;
@@ -190,7 +188,6 @@ int main()
     testFood();
     testEatPlayer();
     testMovement();
-    testBots();
     testProtocol();
     testRecords();
     if (failures == 0) std::printf("Все тесты пройдены\n");

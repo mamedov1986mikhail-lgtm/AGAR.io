@@ -1,5 +1,4 @@
 #include "server.h"
-
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -277,7 +276,8 @@ void Server::handleReg(Conn* c, const std::vector<std::string>& w)
     c->pendingName = w[1];
     c->pendingSkin = static_cast<std::uint8_t>(skin);
 
-    if (world_.humanCount() >= kMaxPlayers) { 
+    if (world_. playerCount() >= kMaxPlayers) 
+    { 
         c->state = State::Queued;
         queue_.push_back(c);
         sendLine(c, std::string("FULL ") + kServerFullMessage);
@@ -289,8 +289,9 @@ void Server::handleReg(Conn* c, const std::vector<std::string>& w)
 
 void Server::admit(Conn* c) 
 {
-    int id = world_.addPlayer(c->pendingName, c->pendingSkin, false);
-    if (id < 0) {  // не должно случаться: имя проверено, место освобождено
+    int id = world_.addPlayer(c->pendingName, c->pendingSkin);
+    if (id < 0) 
+    { 
         c->state = State::Connected;
         sendLine(c, "ERR TAKEN Не удалось добавить игрока");
         return;
@@ -310,7 +311,7 @@ void Server::admit(Conn* c)
 
 void Server::promoteQueue() 
 {
-    while (!stopping_ && !queue_.empty() && world_.humanCount() < kMaxPlayers) 
+    while (!stopping_ && !queue_.empty() && world_.playerCount() < kMaxPlayers) 
     {
         Conn* c = queue_.front();
         queue_.pop_front();
@@ -392,17 +393,17 @@ void Server::sendState(Conn* c, std::uint32_t tickNo, const std::vector<std::uin
     const Player* me = world_.player(static_cast<std::uint8_t>(c->playerId));
     if (!me || !c->hasUdp) return;
 
-    std::vector<Food> near;
-    world_.collectFoodsNear(me->x, me->y, kViewHalfW, kViewHalfH, kMaxFoodPerPacket, near);
+    std::vector<Food> nearFoods;
+    world_.collectFoodsNear(me->x, me->y, kViewHalfW, kViewHalfH, kMaxFoodPerPacket, nearFoods);
 
     ByteWriter w;
     w.u8(kPktState);
     w.u32(tickNo);
     w.u8(static_cast<std::uint8_t>(c->playerId));
     w.u8(playersCount);
-    w.u16(static_cast<std::uint16_t>(near.size()));
+    w.u16(static_cast<std::uint16_t>(nearFoods.size()));
     w.bytes(block);
-    for (const Food& f : near) 
+    for (const Food& f : nearFoods) 
     {
         NetFood nf;
         nf.x = static_cast<std::uint16_t>(f.x);
@@ -437,7 +438,6 @@ void Server::tick()
 
     for (const DeathInfo& d : deaths) 
     {
-        if (d.bot) continue;
         Conn* c = connByPlayer(d.id);
         if (!c) continue;
         finishGame(c, "DEAD", d.weight, static_cast<int>(d.aliveTime));

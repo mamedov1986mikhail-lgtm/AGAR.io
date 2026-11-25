@@ -1,17 +1,14 @@
 #pragma once
-
 #include <uv.h>
-
 #include <array>
 #include <cstdint>
 #include <deque>
 #include <set>
 #include <string>
 #include <vector>
-
-#include "game_world.hpp"
-#include "protocol.hpp"
-#include "records.hpp"
+#include "game_world.h"
+#include "protocol.h"
+#include "records.h"
 
 namespace agar 
 {
