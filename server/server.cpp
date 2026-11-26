@@ -274,17 +274,18 @@ void Server::handleReg(Conn* c, const std::vector<std::string>& w)
         return;
     }
     c->pendingName = w[1];
-    c->pendingSkin = static_cast<std::uint8_t>(skin);
+   
+    c->state = State::Queued;
+    queue_.push_back(c);
+    promoteQueue();
 
-    if (world_. playerCount() >= kMaxPlayers) 
-    { 
-        c->state = State::Queued;
-        queue_.push_back(c);
-        sendLine(c, std::string("FULL ") + kServerFullMessage);
+    if (c->state == State::Queued)
+    {
+        const bool full = world_.playerCount() >= kMaxPlayers;
+        sendLine(c, std::string("FULL ") +
+            (full ? kServerFullMessage : kWaitPlayersMessage));
         logf("В очередь: %s", c->pendingName);
-        return;
     }
-    admit(c);
 }
 
 void Server::admit(Conn* c) 
@@ -309,9 +310,12 @@ void Server::admit(Conn* c)
     logf("Вход: %s", c->pendingName);
 }
 
-void Server::promoteQueue() 
+void Server::promoteQueue()
 {
-    while (!stopping_ && !queue_.empty() && world_.playerCount() < kMaxPlayers) 
+    while (!stopping_ && !queue_.empty() &&
+           static_cast<int>(world_.playerCount()) < static_cast<int>(kMaxPlayers) &&
+           static_cast<int>(world_.playerCount()) + static_cast<int>(queue_.size())
+               >= kMinPlayers)
     {
         Conn* c = queue_.front();
         queue_.pop_front();

@@ -45,8 +45,6 @@ GameScreen::~GameScreen()
     tcp_.close();
 }
 
-// ------------------------------------------------------------------ сеть
-
 void GameScreen::connect(App& app) 
 {
     if (!tcp_.connect(app.profile.host, app.profile.tcpPort, 3.f)) 
@@ -130,8 +128,6 @@ void GameScreen::requestLeave()
         leaveTimer_ = 0;
     }
 }
-
-// ------------------------------------------------------------------ ввод и обновление
 
 void GameScreen::handleEvent(App& app, const sf::Event& e) 
 {
@@ -270,8 +266,6 @@ void GameScreen::update(App& app, float dt)
     }
 }
 
-// ------------------------------------------------------------------ рисование
-
 void GameScreen::drawWorld(App& app, sf::RenderTarget& target) 
 {
     float z = zoom();
@@ -291,7 +285,6 @@ void GameScreen::drawWorld(App& app, sf::RenderTarget& target)
 
     sf::Vector2f c = view.getCenter(), half(view.getSize().x / 2.f + 20.f, view.getSize().y / 2.f + 20.f);
 
-    // Корм.
     sf::CircleShape dot(1.f, 20);
     for (const NetFood& f : state_.foods) 
     {
@@ -376,14 +369,29 @@ void GameScreen::drawHud(App& app, sf::RenderTarget& target)
 }
 
 void GameScreen::drawOverlay(App& app, sf::RenderTarget& target, const std::string& title,
-                             const std::vector<std::string>& lines, sf::Color titleColor) 
+    const std::vector<std::string>& lines, sf::Color titleColor)
 {
     target.setView(target.getDefaultView());
     sf::RectangleShape dim(sf::Vector2f(kWinW, kWinH));
     dim.setFillColor(sf::Color(0, 0, 0, 150));
     target.draw(dim);
 
-    float h = 110.f + 40.f * static_cast<float>(lines.size());
+    std::vector<std::string> titleLines;
+    std::size_t start = 0;
+    std::size_t end = 0;
+    while ((end = title.find('\n', start)) != std::string::npos)
+    {
+        titleLines.push_back(title.substr(start, end - start));
+        start = end + 1;
+    }
+    titleLines.push_back(title.substr(start));
+
+    const bool multiline = titleLines.size() > 1;
+    const unsigned titleSize = multiline ? 28 : 40;
+    const float titleStep = 40.f;
+    const float extra = titleStep * static_cast<float>(titleLines.size() - 1);
+
+    float h = 110.f + extra + 40.f * static_cast<float>(lines.size());
     sf::RectangleShape box(sf::Vector2f(700.f, h));
     box.setOrigin(350.f, h / 2.f);
     box.setPosition(kWinW / 2.f, kWinH / 2.f);
@@ -393,9 +401,15 @@ void GameScreen::drawOverlay(App& app, sf::RenderTarget& target, const std::stri
     target.draw(box);
 
     float y = kWinH / 2.f - h / 2.f + 22.f;
-    drawText(target, app.font, title, kWinW / 2.f, y, 40, titleColor, Align::Center, true);
-    y += 72.f;
-    for (const std::string& l : lines) {
+    for (const std::string& t : titleLines)
+    {
+        drawText(target, app.font, t, kWinW / 2.f, y, titleSize, titleColor, Align::Center, true);
+        y += titleStep;
+    }
+    y += 32.f;
+
+    for (const std::string& l : lines)
+    {
         drawText(target, app.font, l, kWinW / 2.f, y, 24, sf::Color(225, 228, 238), Align::Center);
         y += 40.f;
     }
@@ -410,8 +424,21 @@ void GameScreen::draw(App& app, sf::RenderTarget& target)
                         sf::Color::White);
             break;
         case Phase::Queued:
-            drawOverlay(app, target, message_, {"Вход произойдёт автоматически.", "Esc — выйти из очереди"},
-                        sf::Color(255, 200, 90));
+        {
+            std::string text = message_;
+
+            std::size_t pos = text.find(": ");     
+            if (pos == std::string::npos)
+                pos = text.find(". ");              
+
+            if (pos != std::string::npos)
+                text[pos + 1] = '\n';            
+
+            drawOverlay(app, target, text,
+                { "Вход произойдёт автоматически.", "Esc — выйти из очереди" },
+                sf::Color(255, 200, 90));
+            break;
+        }
             break;
         case Phase::Playing:
             if (haveState_) 

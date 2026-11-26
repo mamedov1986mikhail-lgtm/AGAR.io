@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Agar LANGUAGES CXX)
+project(Agar LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,17 +21,15 @@ option(AGAR_BUILD_SERVER "Собрать сервер (libuv)" ON)
 option(AGAR_BUILD_CLIENT "Собрать клиент (SFML)" ON)
 option(AGAR_BUILD_TESTS  "Собрать тесты логики" ON)
 
-# ---------------------------------------------------------------- общий код
 add_library(agar_common STATIC
     common/game_world.cpp
     common/records.cpp)
 target_include_directories(agar_common PUBLIC common)
 
-# ---------------------------------------------------------------- сервер (libuv)
 if(AGAR_BUILD_SERVER)
     set(AGAR_LIBUV_TARGET "")
 
-    find_package(libuv CONFIG QUIET)                 # vcpkg, conan, установленный через cmake
+    find_package(libuv CONFIG QUIET)                 
     if(TARGET libuv::uv)
         set(AGAR_LIBUV_TARGET libuv::uv)
     elseif(TARGET libuv::uv_a)
@@ -39,7 +37,7 @@ if(AGAR_BUILD_SERVER)
     endif()
 
     if(NOT AGAR_LIBUV_TARGET)
-        find_package(PkgConfig QUIET)                # apt install libuv1-dev
+        find_package(PkgConfig QUIET)               
         if(PkgConfig_FOUND)
             pkg_check_modules(LIBUV QUIET IMPORTED_TARGET libuv)
             if(LIBUV_FOUND)
@@ -49,7 +47,7 @@ if(AGAR_BUILD_SERVER)
     endif()
 
     if(NOT AGAR_LIBUV_TARGET)
-        find_path(LIBUV_INCLUDE_DIR uv.h)            # можно задать -DLIBUV_INCLUDE_DIR=... -DLIBUV_LIBRARY=...
+        find_path(LIBUV_INCLUDE_DIR uv.h)            
         find_library(LIBUV_LIBRARY NAMES uv libuv)
         if(LIBUV_INCLUDE_DIR AND LIBUV_LIBRARY)
             add_library(agar_libuv UNKNOWN IMPORTED)
@@ -77,7 +75,6 @@ if(AGAR_BUILD_SERVER)
     target_link_libraries(agar_server PRIVATE agar_common ${AGAR_LIBUV_TARGET})
 endif()
 
-# ---------------------------------------------------------------- клиент (SFML)
 if(AGAR_BUILD_CLIENT)
     find_package(SFML 2.5 COMPONENTS graphics window network system QUIET)
     if(NOT SFML_FOUND)
@@ -105,13 +102,11 @@ if(AGAR_BUILD_CLIENT)
         sfml-graphics sfml-window sfml-network sfml-system)
     target_compile_definitions(agar_client PRIVATE AGAR_ASSET_DIR="${CMAKE_SOURCE_DIR}/assets")
 
-    # Ресурсы (шрифт, при желании road.png) кладём рядом с исполняемым файлом.
     add_custom_command(TARGET agar_client POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:agar_client>/assets)
 endif()
 
-# ---------------------------------------------------------------- тесты
 if(AGAR_BUILD_TESTS)
     enable_testing()
     add_executable(agar_tests tests/world_test.cpp)

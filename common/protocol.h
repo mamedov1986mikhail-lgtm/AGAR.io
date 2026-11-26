@@ -1,23 +1,4 @@
-// Общие константы и сетевой протокол игры AGAR (клиент <-> сервер).
-//
-// TCP (текстовый, строки заканчиваются '\n', UTF-8) - управление сессией:
-//   клиент -> сервер:  REG <имя> <скин>      регистрация игрока
-//                      LEAVE                 выход из игры (или из очереди)
-//                      RECORDS               запрос таблицы рекордов
-//   сервер -> клиент:  OK <id> <токен> <udp-порт> <ширина> <высота>
-//                      FULL <сообщение>      сервер полон, игрок поставлен в очередь
-//                      ERR <код> <текст>     BADNAME | BADSKIN | TAKEN | ALREADY
-//                      DEAD <вес> <секунды> <рекорд 0/1> <место>   проигрыш (подтверждение выхода)
-//                      BYE  <вес> <секунды> <рекорд 0/1> <место>   подтверждение выхода по LEAVE
-//                      RECORDS <n>  и далее n строк:  R <имя> <вес> <секунды>
-//
-// UDP (бинарный, little-endian) - игровой поток:
-//   клиент -> сервер:  Input: [1][id u8][токен u32][цель x f32][цель y f32]
-//   сервер -> клиент:  State: [2][tick u32][ваш id u8][n игроков u8][n корма u16]
-//                        игрок: [id u8][скин u8][x f32][y f32][вес u32][длина имени u8][имя]
-//                        корм:  [x u16][y u16][тип u8]
 #pragma once
-
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
@@ -28,7 +9,6 @@
 
 namespace agar 
 {
-
 constexpr int kMaxPlayers = 16;            
 constexpr float kWorldW = 4000.f;          
 constexpr float kWorldH = 4000.f;
@@ -46,7 +26,9 @@ constexpr float kViewHalfH = 460.f;
 constexpr int kMaxFoodPerPacket = 150;     
 
 constexpr const char* kServerFullMessage = "Сервер полон. Ожидайте своей очереди на вход.";
-
+constexpr int kMinPlayers = 3;
+constexpr const char* kWaitPlayersMessage =
+    "Ожидайте подключения: для входа на сервер нужно три игрока.";
 enum PacketType : std::uint8_t { kPktInput = 1, kPktState = 2 };
 
 inline float foodSize(int type) { return 5.f * static_cast<float>(type + 1); }
@@ -55,8 +37,6 @@ inline std::uint32_t foodWeight(int type) { return static_cast<std::uint32_t>(ty
 inline float diameterForWeight(std::uint32_t weight) {
     return kStartDiameter - 1.f + static_cast<float>(weight);
 }
-
-// ---------------------------------------------------------------- байты
 
 class ByteWriter 
 {
@@ -143,8 +123,6 @@ private:
     std::size_t pos_ = 0;
     bool ok_ = true;
 };
-
-// ---------------------------------------------------------------- UDP-пакеты
 
 struct NetPlayer 
 {
@@ -249,8 +227,6 @@ inline bool decodeState(const std::uint8_t* d, std::size_t n, StatePacket& out)
     }
     return true;
 }
-
-// ---------------------------------------------------------------- утилиты
 
 inline bool isValidName(const std::string& s) 
 {

@@ -62,7 +62,6 @@ private:
         std::vector<std::uint8_t> data;
     };
 
-    // libuv-колбэки
     static void onConnection(uv_stream_t* server, int status);
     static void onAlloc(uv_handle_t* h, size_t suggested, uv_buf_t* buf);
     static void onRead(uv_stream_t* s, ssize_t nread, const uv_buf_t* buf);
@@ -74,7 +73,6 @@ private:
     static void onTick(uv_timer_t* t);
     static void onGenericClosed(uv_handle_t* h);
 
-    // TCP-часть
     void acceptConn();
     void closeConn(Conn* c);
     void sendLine(Conn* c, const std::string& line);
@@ -82,7 +80,6 @@ private:
     void handleReg(Conn* c, const std::vector<std::string>& w);
     void sendRecords(Conn* c);
 
-    // Игровая логика
     bool nameInUse(const std::string& name) const;
     void admit(Conn* c);
     void promoteQueue();

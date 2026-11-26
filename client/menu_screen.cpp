@@ -97,7 +97,7 @@ void MenuScreen::draw(App& app, sf::RenderTarget& target)
         target.draw(blob);
     }
 
-    drawText(target, app.font, "AGAR", kWinW / 2.f, 70.f, 84, sf::Color(240, 240, 245), Align::Center, true);
+    drawText(target, app.font, "AGAR.io", kWinW / 2.f, 70.f, 84, sf::Color(240, 240, 245), Align::Center, true);
 
     for (int i = 0; i < static_cast<int>(items_.size()); i++) 
     {
